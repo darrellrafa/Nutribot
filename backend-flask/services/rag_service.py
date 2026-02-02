@@ -263,7 +263,15 @@ class RAGService:
         else:
             lang_directive = "[IMPORTANT: YOU MUST REPLY IN ENGLISH]\n\n"
         
-        message_with_directive = lang_directive + message
+        # INJECT FORMAT DIRECTIVE (CRITICAL FOR NUMBERED LIST)
+        format_directive = ""
+        if self._is_list_request(message):
+            if detected_lang == 'id':
+                format_directive = "[FORMAT: Gunakan nomor 1. 2. 3. 4. untuk setiap item. Contoh:\n1. **Nasi Goreng** - Deskripsi singkat (350 kkal, 15g protein)\n2. **Ayam Bakar** - Deskripsi singkat (400 kkal, 35g protein)]\n\n"
+            else:
+                format_directive = "[FORMAT: Use numbered list 1. 2. 3. 4. for each item. Example:\n1. **Grilled Chicken** - Brief description (350 kcal, 35g protein)\n2. **Salmon Bowl** - Brief description (400 kcal, 40g protein)]\n\n"
+        
+        message_with_directive = lang_directive + format_directive + message
         
         # Add user message with directive
         messages.append({'role': 'user', 'content': message_with_directive})
@@ -272,6 +280,24 @@ class RAGService:
         response = self.llm.chat(messages, temperature=0.7, max_tokens=2048, model=model)
         
         return response
+    
+    def _is_list_request(self, message: str) -> bool:
+        """Check if user is asking for a numbered list of items"""
+        import re
+        message_lower = message.lower()
+        
+        # Patterns that indicate numbered list request
+        list_patterns = [
+            r'\d+\s*(menu|meal|food|makanan|ide|idea|suggestion|rekomendasi|resep|recipe)',
+            r'(suggest|give|provide|berikan|kasihkan|buatkan|rekomendasikan)\s*(me\s+)?\d+',
+            r'(list|daftar)\s*(of\s+)?\d+',
+        ]
+        
+        for pattern in list_patterns:
+            if re.search(pattern, message_lower):
+                return True
+        
+        return False
     
     def _detect_language(self, text: str) -> str:
         """
