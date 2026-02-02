@@ -286,16 +286,15 @@ class RAGService:
         import re
         message_lower = message.lower()
         
-        # Patterns that indicate numbered list request
-        list_patterns = [
-            r'\d+\s*(menu|meal|food|makanan|ide|idea|suggestion|rekomendasi|resep|recipe)',
-            r'(suggest|give|provide|berikan|kasihkan|buatkan|rekomendasikan)\s*(me\s+)?\d+',
-            r'(list|daftar)\s*(of\s+)?\d+',
-        ]
+        # Simple keyword check first
+        has_number = bool(re.search(r'\d+', message_lower))
+        has_meal_word = any(word in message_lower for word in ['meal', 'menu', 'food', 'makanan', 'suggest', 'give', 'berikan', 'buatkan'])
         
-        for pattern in list_patterns:
-            if re.search(pattern, message_lower):
-                return True
+        print(f"DEBUG _is_list_request: has_number={has_number}, has_meal_word={has_meal_word}, message='{message_lower[:50]}'")
+        
+        if has_number and has_meal_word:
+            print("DEBUG: List request DETECTED!")
+            return True
         
         return False
     
