@@ -100,7 +100,8 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
         content: msg.text
       }));
 
-      const response = await fetch('/api/chat', {
+      const baseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
