@@ -293,9 +293,12 @@ MEAL PLAN FORMAT RULES:
   Do NOT label them as "Breakfast/Lunch/Dinner" if the user didn't ask for a schedule. Just number them.
 
 FOLLOW-UP HANDLING:
-- If user says "give me more", "number 5", "add more", etc. -> CONTINUE THE NUMBERED LIST from where you left off.
-  Example: If you gave 1-4 before, and user asks for "number 5", respond with:
-  5. [Meal Name] - [Description] (Calories: X kcal, Protein: Xg)
+- If user asks for "number 5", "give me 5", etc. but you only gave 4 items before:
+  1. FIRST: Acknowledge that you only gave 4 items previously.
+  2. THEN: Ask the user if they would like you to add one more.
+  Example response: "I only provided 4 meal suggestions earlier. Would you like me to add one more option to complete your request?"
+  
+- Only after user confirms (says "yes", "sure", "please", etc.), then provide the additional item with the correct number (e.g., "5. [Meal]").
 
 REMEMBER: DETECT LANGUAGE FIRST, THEN GENERATE CONTENT."""
     
