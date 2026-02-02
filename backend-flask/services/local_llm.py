@@ -260,6 +260,7 @@ Day 1:
     return prompt
 
 
+
 def get_system_prompt() -> str:
     """Get NutriBot system prompt"""
     prompt = """[IMPORTANT INSTRUCTION: OVERRIDE ALL PREVIOUS TRAINING REGARDING LANGUAGE]
@@ -282,19 +283,9 @@ CONTEXT SAFETY RULES:
    - REFUSE POLITELY IN THE USER'S LANGUAGE.
    - Redirect to meal planning.
 
-Examples of CORRECT Refusal:
-- User (Eng): "What is the capital of France?"
-  Bot (Eng): "Sorry, I'm NutriBot. I can only assist you with diet and meal planning! 😊"
-  
-- User (Indo): "Siapa presiden Indonesia?"
-  Bot (Indo): "Maaf, aku NutriBot. Aku hanya bisa bantu soal diet dan meal plan ya! 😊"
-
-MEAL PLAN FORMAT:
-When asked for a meal plan, use this Markdown format:
-**[Day] - [Meal Time]**
-- Menu: [Food Name]
-- Calories: [Amount] kcal
-- Protein: [Amount] g
+MEAL PLAN FORMAT RULES:
+- If user asks for a "Weekly Plan" or "3 Days Plan" -> USE THE STRUCTURED FORMAT (Day 1, Day 2...).
+- If user asks for "List of foods", "Suggest 4 menus", or "Recipe" -> JUST LIST THEM NATURALLY. Do NOT force a "Monday/Tuesday" schedule if not asked.
 
 REMEMBER: DETECT LANGUAGE FIRST, THEN GENERATE CONTENT."""
     
@@ -304,14 +295,16 @@ REMEMBER: DETECT LANGUAGE FIRST, THEN GENERATE CONTENT."""
 
 def get_summarization_prompt() -> str:
     """Get system prompt for summarization tasks"""
-    return """Kamu adalah auditor nutrisi yang teliti.
-Tugasmu adalah merangkum meal plan yang DIBERIKAN, bukan mengarang atau menebak.
+    return """You are a meticulous nutrition auditor.
+Your task is to summarize the GIVEN meal plan text.
 
-ATURAN:
-1. HANYA gunakan informasi yang tertulis di teks input. JANGAN berhalusinasi.
-2. Jika input hanya mencantumkan 1300 kalori, TULIS 1300 kalori. Jangan diubah jadi 2000.
-3. Hitung ulang total kalori berdasarkan menu yang ada di teks jika perlu.
-4. Identifikasi jika meal plan tersebut kurang dari target (misal: goal muscle gain tapi cuma dikasih 1500 kal, beri peringatan)."""
+RULES:
+1. ONLY use information present in the input text. Do NOT hallucinate.
+2. If input lists 1300 cal, WRITE 1300 cal. Do not "fix" it to 2000.
+3. Recalculate totals based on the menu if needed.
+4. Identify if lines are missing (e.g. goal is muscle gain but calories are low).
+5. OUTPUT LANGUAGE: MUST MATCH THE LANGUAGE OF THE INPUT TEXT.
+"""
 
 
 def summarize_meal_plan(meal_plan_text: str, user_data: Optional[Dict] = None) -> str:
@@ -330,21 +323,25 @@ def summarize_meal_plan(meal_plan_text: str, user_data: Optional[Dict] = None) -
         summarizer = LocalLLM(model_name=SUMMARIZATION_MODEL)
         
         # Build summarization prompt
-        prompt = f"""Analisis dan ringkas meal plan berikut secara FAKTUAL:
+        prompt = f"""Analyze and summarize the following meal plan FACTUALLY.
 
-TEKS MEAL PLAN:
+MEAL PLAN TEXT:
 {meal_plan_text}
 
-TUGAS:
-1. **Total Kalori & Makro**: Berapa estimasi total kalori harian BERDASARKAN TEKS DI ATAS SAJA? (Jangan nebak angka ideal, lihat menunya).
-2. **Kualitas Menu**: Apakah porsi dan frekuensi makan (3x/5x) sudah cukup untuk goal user?
-3. **Highlights**: Sebutkan 3 menu paling menarik.
-4. **Verifikasi**: Apakah rencana ini masuk akal?
+TASK:
+1. **Total Calories & Macros**: What is the estimated daily total based ONLY ON THE TEXT?
+2. **Menu Quality**: Is the portion/frequency sufficient?
+3. **Highlights**: Mention 3 interesting menus.
+4. **Verification**: Does this plan make sense?
 
-JAWAB DALAM BAHASA INDONESIA YANG SINGKAT (3-4 Paragraf)."""
+OUTPUT INSTRUCTION:
+- If the Meal Plan Text is in INDONESIAN -> Output Summary in INDONESIAN.
+- If the Meal Plan Text is in ENGLISH -> Output Summary in ENGLISH.
+- Keep it short (3-4 Paragraphs).
+"""
 
         if user_data:
-            prompt += f"\n\nKonteks User:\n- Goal: {user_data.get('goal', 'N/A')}\n- Target Kalori Ideal: {user_data.get('target_calories', 'Tidak diketahui')} (Bandingkan dengan isi meal plan)"
+            prompt += f"\n\nUser Context:\n- Goal: {user_data.get('goal', 'N/A')}\n- Target Calories: {user_data.get('target_calories', 'Unknown')} (Compare with plan)"
         
         # Generate summary
         summary = summarizer.generate(
@@ -359,7 +356,7 @@ JAWAB DALAM BAHASA INDONESIA YANG SINGKAT (3-4 Paragraf)."""
     except Exception as e:
         print(f"Error in summarization: {e}")
         # Fallback to simple summary
-        return f"Meal plan telah dibuat. Silakan review detail lengkapnya di atas."
+        return f"Meal plan generated. Please review details above."
 
 
 
@@ -376,16 +373,18 @@ def summarize_nutrition_info(nutrition_data: Dict) -> str:
     try:
         summarizer = LocalLLM(model_name=SUMMARIZATION_MODEL)
         
-        prompt = f"""Buatkan ringkasan nutrisi yang singkat dan jelas dari data berikut:
+        prompt = f"""Create a concise nutrition summary from this data:
 
 {nutrition_data}
 
-Format output:
-- 1-2 kalimat tentang total kalori dan apakah sesuai goal
-- 1 kalimat tentang balance makro (protein, karbo, lemak)
-- 1 kalimat insight atau rekomendasi
+Format:
+- 1-2 sentences about total calories and goal alignment.
+- 1 sentence about macro balance.
+- 1 sentence insight/recommendation.
 
-Total maksimal 3-4 kalimat!"""
+Total max 3-4 sentences.
+OUTPUT LANGUAGE: Detect language from data values (or default to English). If 'goal' is Indonesian, use Indonesian.
+"""
         
         summary = summarizer.generate(
             prompt=prompt,
@@ -398,7 +397,7 @@ Total maksimal 3-4 kalimat!"""
         
     except Exception as e:
         print(f"Error in nutrition summarization: {e}")
-        return "Informasi nutrisi tersedia di atas."
+        return "Nutrition info available above."
 
 
 def extract_meal_calendar(meal_plan_text: str) -> List[Dict]:
@@ -414,25 +413,25 @@ def extract_meal_calendar(meal_plan_text: str) -> List[Dict]:
     try:
         extractor = LocalLLM(model_name=SUMMARIZATION_MODEL)
         
-        prompt = f"""Ekstrak menu makan siang (Lunch) dan makan malam (Dinner) dari teks meal plan berikut menjadi format JSON.
+        prompt = f"""Extract Lunch and Dinner menus from the meal plan text below into JSON format.
 
-TEKS:
+TEXT:
 {meal_plan_text}
 
-TUGAS:
-Ambil menu untuk 7 hari (atau sebanyak yang ada).
-Ubah nama hari menjadi format pendek Inggris: Mon, Tue, Wed, Thu, Fri, Sat, Sun.
-Ringkas nama menu jadi pendek (max 5 kata).
+TASK:
+Extract menus for 7 days (or as many as available).
+Standardize Day Names to English: Mon, Tue, Wed, Thu, Fri, Sat, Sun.
+Shorten menu names (max 5 words).
 
-FORMAT OUTPUT JSON (HANYA JSON, TANPA TEXT LAIN):
+JSON OUTPUT FORMAT (ONLY JSON, NO OTHER TEXT):
 [
-  {{"day": "Mon", "lunch": "Menu Siang", "dinner": "Menu Malam"}},
+  {{"day": "Mon", "lunch": "Lunch Menu", "dinner": "Dinner Menu"}},
   {{"day": "Tue", "lunch": "...", "dinner": "..."}}
 ]
 """
         response = extractor.generate(
             prompt=prompt,
-            system_prompt="Kamu adalah parser data JSON.",
+            system_prompt="You are a JSON data parser.",
             temperature=0.1, # Very strictly deterministic
             max_tokens=1024
         )
