@@ -1,0 +1,97 @@
+# NutriBot Project Flowchart
+
+This flowchart illustrates the architecture and data flow of the NutriBot application, covering the Next.js Frontend, Flask Backend, and the RAG/LLM Service layer.
+
+```mermaid
+flowchart TD
+    %% Nodes
+    User([User])
+    
+    subgraph Frontend [Next.js Frontend]
+        UI[Chat Interface]
+        API_Client[API Client]
+    end
+
+    subgraph Backend [Flask Backend]
+        App[app.py]
+        ChatRoute[routes/chat.py]
+        
+        subgraph Services [Service Layer]
+            LLM_Service[services/llm.py]
+            RAG_Service[services/rag_service.py]
+            Local_LLM[services/local_llm.py]
+            Food_DB[services/food_database.py]
+            Nutrition_Calc[services/nutrition.py]
+        end
+    end
+
+    subgraph External [External / Database]
+        Ollama[(Ollama LLM)]
+        SQLite[(SQLite DB)]
+        FoodData[(FoodData Central)]
+    end
+
+    %% Flow
+    User -->|Sends Message| UI
+    UI -->|POST /api/chat| App
+    App -->|Router| ChatRoute
+    
+    ChatRoute -->|Check History| LLM_Service
+    ChatRoute -->|Calculate Nutrition| Nutrition_Calc
+    
+    LLM_Service -->|Delegates Chat| RAG_Service
+    
+    RAG_Service -->|1. Analyze Query| RAG_Service
+    RAG_Service -- If Food Query -->|2. Search| Food_DB
+    Food_DB -->|Query| FoodData
+    Food_DB -.->|Returns Context| RAG_Service
+    
+    RAG_Service -->|3. Generate Response| Local_LLM
+    
+    Local_LLM -->|API Call| Ollama
+    Ollama -.->|Returns Text| Local_LLM
+    Local_LLM -.->|Returns Response| RAG_Service
+    RAG_Service -.->|Returns Reply| LLM_Service
+    
+    %% Post Processing Flow (Meal Plan)
+    LLM_Service -- If Text > 500 chars -->|Summarize| Local_LLM
+    LLM_Service -- If Text > 500 chars -->|Extract Calendar| Local_LLM
+    Local_LLM -->|Qwen 2.5| Ollama
+    
+    %% Return Path
+    LLM_Service -.->|Compiles Data| ChatRoute
+    Nutrition_Calc -.->|Returns Summary| ChatRoute
+    ChatRoute -.->|JSON Response| App
+    App -.->|JSON| UI
+    UI -.->|Displays Reply & Dashboard| User
+
+    %% Styling
+    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef backend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef service fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+    classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    
+    class Frontend,UI,API_Client frontend;
+    class Backend,App,ChatRoute backend;
+    class Services,LLM_Service,RAG_Service,Local_LLM,Food_DB,Nutrition_Calc service;
+    class External,Ollama,SQLite,FoodData external;
+```
+
+## Component Description
+
+### Frontend (Next.js)
+- **Chat Interface**: Handles user input and displays messages.
+- **Dashboard**: Displays generated meal calendars and nutrition summaries.
+
+### Backend (Flask)
+- **Routes ([chat.py](file:///c:/Users/PC/Documents/ai%20class%201%202026/NLP/final-project/backend-flask/routes/chat.py))**: Main entry point for chat. Orchestrates the flow between the LLM interaction and nutrition calculations.
+- **LLM Service ([llm.py](file:///c:/Users/PC/Documents/ai%20class%201%202026/NLP/final-project/backend-flask/services/llm.py))**: Acts as a facade/controller. It manages the connection to the RAG service and handles post-processing tasks like **Summarization** and **Calendar Extraction**.
+- **RAG Service ([rag_service.py](file:///c:/Users/PC/Documents/ai%20class%201%202026/NLP/final-project/backend-flask/services/rag_service.py))**: The core intelligence logic. It:
+  - Detects if the user is asking about specific foods.
+  - Retrieves relevant nutrition data from the **Food Database**.
+  - Constructs a context-aware prompt for the LLM.
+- **Local LLM ([local_llm.py](file:///c:/Users/PC/Documents/ai%20class%201%202026/NLP/final-project/backend-flask/services/local_llm.py))**: A wrapper around the **Ollama** client. It handles model selection (Llama 3.2 for chat, Qwen 2.5 for summarization) and error handling.
+- **Food Database ([food_database.py](file:///c:/Users/PC/Documents/ai%20class%201%202026/NLP/final-project/backend-flask/services/food_database.py))**: Searches for food items and nutrition facts to augment the LLM's knowledge.
+
+### External
+- **Ollama**: Hosts the local AI models (Llama 3.2, Qwen 2.5).
