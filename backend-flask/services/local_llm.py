@@ -292,6 +292,11 @@ MEAL PLAN FORMAT RULES:
   
   Do NOT label them as "Breakfast/Lunch/Dinner" if the user didn't ask for a schedule. Just number them.
 
+FOLLOW-UP HANDLING:
+- If user says "give me more", "number 5", "add more", etc. -> CONTINUE THE NUMBERED LIST from where you left off.
+  Example: If you gave 1-4 before, and user asks for "number 5", respond with:
+  5. [Meal Name] - [Description] (Calories: X kcal, Protein: Xg)
+
 REMEMBER: DETECT LANGUAGE FIRST, THEN GENERATE CONTENT."""
     
     print(f"DEBUG SYSTEM PROMPT: {prompt[:100]}...")
