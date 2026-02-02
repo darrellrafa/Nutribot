@@ -61,16 +61,16 @@ export function SummaryPanel({ summaryContent }: SummaryPanelProps) {
     <GlassCard title="Session Summary" icon={<Share2 size={18} />}>
       <div className="space-y-6">
         {summaryContent ? (
-          <div className="prose prose-sm max-w-none text-slate-600">
+          <div className="space-y-4">
             <h4 className="flex items-center gap-2 text-sm font-semibold text-emerald-800 mb-3 sticky top-0 bg-white/50 backdrop-blur-sm py-1 z-10">
               <ChefHat size={14} /> AI Meal Plan Summary
             </h4>
-            <div className="max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-emerald-100 scrollbar-track-transparent whitespace-pre-line text-xs leading-relaxed">
+            <div className="max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-emerald-100 scrollbar-track-transparent whitespace-pre-line text-xs leading-relaxed text-slate-600">
               {summaryContent}
             </div>
             <button
               onClick={handleExportPDF}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-3 bg-white border border-emerald-100 text-emerald-700 rounded-xl hover:bg-emerald-50 transition-colors text-sm font-medium shadow-sm active:scale-95 transform duration-100"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-emerald-100 text-emerald-700 rounded-xl hover:bg-emerald-50 transition-colors text-sm font-medium shadow-sm active:scale-95 transform duration-100"
             >
               <Download size={16} />
               Export to PDF
