@@ -285,12 +285,19 @@ CONTEXT SAFETY RULES:
 
 MEAL PLAN FORMAT RULES:
 - If user asks for a "Weekly Plan" or "X Days Plan" -> USE THE STRUCTURED FORMAT (Day 1, Day 2...).
-- If user asks for "List of foods", "Suggest N menus", "Give me N meal ideas", or "Recipe" -> USE A SIMPLE NUMBERED LIST:
-  1. [Meal Name] - [Brief description] (Calories: X kcal, Protein: Xg)
-  2. [Meal Name] - [Brief description] (Calories: X kcal, Protein: Xg)
-  ... etc.
+- If user asks for "Suggest N menus", "Give me N meal ideas", "N foods", etc. -> YOU MUST USE NUMBERED LIST FORMAT:
+
+  CORRECT FORMAT (USE THIS):
+  1. **Grilled Chicken Salad** - Lean protein with fresh vegetables (350 kcal, 35g protein)
+  2. **Salmon with Quinoa** - Omega-3 rich fish with complex carbs (450 kcal, 40g protein)
+  3. **Turkey Wrap** - Whole wheat wrap with lean turkey (400 kcal, 30g protein)
+  4. **Beef Stir-Fry** - Lean beef with mixed vegetables (500 kcal, 45g protein)
+
+  WRONG FORMAT (DO NOT USE):
+  - Grilled Chicken Salad: A lean protein...
+  - Salmon with Quinoa: Omega-3 rich...
   
-  Do NOT label them as "Breakfast/Lunch/Dinner" if the user didn't ask for a schedule. Just number them.
+  CRITICAL: Always start each item with a NUMBER followed by a period (1. 2. 3. 4.). Do NOT use bullet points or dashes.
 
 FOLLOW-UP HANDLING:
 - If user asks for "number 5", "give me 5", etc. but you only gave 4 items before:
