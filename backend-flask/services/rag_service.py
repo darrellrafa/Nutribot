@@ -232,6 +232,9 @@ class RAGService:
         Returns:
             AI response
         """
+        # Detect user language FIRST
+        detected_lang = self._detect_language(message)
+        
         # Build messages
         messages = [{'role': 'system', 'content': get_system_prompt()}]
         
@@ -254,13 +257,58 @@ class RAGService:
                 food_context = self.build_food_context(relevant_foods, max_items=10)
                 message = f"{message}\n\n{food_context}"
         
-        # Add user message
-        messages.append({'role': 'user', 'content': message})
+        # INJECT LANGUAGE DIRECTIVE (CRITICAL FOR FORCING LANGUAGE)
+        if detected_lang == 'id':
+            lang_directive = "[PENTING: JAWAB DALAM BAHASA INDONESIA]\n\n"
+        else:
+            lang_directive = "[IMPORTANT: YOU MUST REPLY IN ENGLISH]\n\n"
+        
+        message_with_directive = lang_directive + message
+        
+        # Add user message with directive
+        messages.append({'role': 'user', 'content': message_with_directive})
         
         # Generate response
         response = self.llm.chat(messages, temperature=0.7, max_tokens=2048, model=model)
         
         return response
+    
+    def _detect_language(self, text: str) -> str:
+        """
+        Simple language detection based on common words.
+        Returns 'id' for Indonesian, 'en' for English.
+        """
+        text_lower = text.lower()
+        
+        # Indonesian indicators (common words/phrases)
+        indonesian_keywords = [
+            'saya', 'aku', 'tolong', 'buatkan', 'berikan', 'kasih', 
+            'makan', 'makanan', 'bisa', 'bagaimana', 'apa', 'apakah',
+            'mohon', 'untuk', 'adalah', 'yang', 'dengan', 'ini', 'itu',
+            'sudah', 'belum', 'ingin', 'mau', 'harus', 'boleh', 'tidak',
+            'sehat', 'diet', 'resep', 'masakan', 'menu', 'sarapan',
+            'minum', 'kalori', 'protein', 'lemak', 'karbohidrat'
+        ]
+        
+        # English indicators
+        english_keywords = [
+            'i ', "i'm", 'please', 'can you', 'could you', 'would you',
+            'give me', 'suggest', 'provide', 'help', 'what', 'how',
+            'the', 'is', 'are', 'my', 'me', 'for', 'with', 'this',
+            'that', 'want', 'need', 'should', 'meal', 'food', 'diet',
+            'healthy', 'recipe', 'breakfast', 'lunch', 'dinner', 'snack',
+            'calories', 'protein', 'carbs', 'fat'
+        ]
+        
+        indo_score = sum(1 for kw in indonesian_keywords if kw in text_lower)
+        eng_score = sum(1 for kw in english_keywords if kw in text_lower)
+        
+        print(f"DEBUG Lang Detection: Indo={indo_score}, Eng={eng_score}")
+        
+        if indo_score > eng_score:
+            return 'id'
+        else:
+            return 'en'  # Default to English
     
     def _is_food_query(self, message: str) -> bool:
         """Check if message is asking about specific foods"""
