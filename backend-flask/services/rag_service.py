@@ -279,7 +279,46 @@ class RAGService:
         # Generate response
         response = self.llm.chat(messages, temperature=0.7, max_tokens=2048, model=model)
         
+        # POST-PROCESS: Auto-number response if list was requested but LLM didn't number
+        if self._is_list_request(message):
+            response = self._auto_number_response(response)
+        
         return response
+    
+    def _auto_number_response(self, response: str) -> str:
+        """
+        Post-process response to add numbers if they're missing.
+        Detects bold items (e.g., **Meal Name**) and numbers them.
+        """
+        import re
+        
+        # Check if response already has numbered format (1. 2. 3.)
+        if re.search(r'^\s*\d+\.', response, re.MULTILINE):
+            print("DEBUG: Response already has numbers, skipping post-process")
+            return response
+        
+        # Find all bold items that look like meal names
+        # Pattern: **Something** - description OR **Something**: description
+        lines = response.split('\n')
+        new_lines = []
+        item_number = 1
+        
+        for line in lines:
+            # Check if line starts with bold item (no number)
+            if re.match(r'^\s*\*\*[^*]+\*\*\s*[-:]', line):
+                # Add number prefix
+                stripped = line.lstrip()
+                indent = line[:len(line) - len(stripped)]
+                new_line = f"{indent}{item_number}. {stripped}"
+                new_lines.append(new_line)
+                item_number += 1
+            else:
+                new_lines.append(line)
+        
+        result = '\n'.join(new_lines)
+        if item_number > 1:
+            print(f"DEBUG: Post-processed response, added {item_number - 1} numbers")
+        return result
     
     def _is_list_request(self, message: str) -> bool:
         """Check if user is asking for a numbered list of items"""
