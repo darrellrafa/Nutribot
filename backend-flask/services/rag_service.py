@@ -136,7 +136,7 @@ class RAGService:
         if not foods:
             return "Tidak ada data makanan spesifik tersedia. Gunakan pengetahuan umum."
         
-        context = "Berikut adalah makanan yang tersedia dengan data nutrisi:\n\n"
+        context = "Here are available foods with nutrition data:\n\n"
         
         for i, food in enumerate(foods[:max_items]):
             nutrients = food.get('nutrients', {})
@@ -147,7 +147,7 @@ class RAGService:
                 context += f"   Brand: {food['brand_name']}\n"
             
             if nutrients:
-                context += "   Nutrisi (per 100g): "
+                context += "   Nutrition (per 100g): "
                 nutrient_parts = []
                 
                 if nutrients.get('calories'):
@@ -155,16 +155,16 @@ class RAGService:
                 if nutrients.get('protein'):
                     nutrient_parts.append(f"Protein {nutrients['protein']:.1f}g")
                 if nutrients.get('carbs'):
-                    nutrient_parts.append(f"Karbo {nutrients['carbs']:.1f}g")
+                    nutrient_parts.append(f"Carbs {nutrients['carbs']:.1f}g")
                 if nutrients.get('fat'):
-                    nutrient_parts.append(f"Lemak {nutrients['fat']:.1f}g")
+                    nutrient_parts.append(f"Fat {nutrients['fat']:.1f}g")
                 
                 context += ", ".join(nutrient_parts) + "\n"
             
             context += "\n"
         
-        context += "\nGunakan makanan di atas sebagai referensi untuk meal plan. "
-        context += "Kamu boleh menambahkan makanan lain yang umum di Indonesia jika diperlukan.\n"
+        context += "\nUse the foods above as a reference for the meal plan. "
+        context += "You may include other common foods if necessary.\n"
         
         return context
     
