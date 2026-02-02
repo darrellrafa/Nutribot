@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/services/api";
 
-export default function Login() {
+import { Suspense } from "react";
+
+function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [formData, setFormData] = useState({ username: "", password: "" });
@@ -89,5 +91,13 @@ export default function Login() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function Login() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading...</div>}>
+            <LoginContent />
+        </Suspense>
     );
 }
