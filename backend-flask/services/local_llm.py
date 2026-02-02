@@ -284,8 +284,13 @@ CONTEXT SAFETY RULES:
    - Redirect to meal planning.
 
 MEAL PLAN FORMAT RULES:
-- If user asks for a "Weekly Plan" or "3 Days Plan" -> USE THE STRUCTURED FORMAT (Day 1, Day 2...).
-- If user asks for "List of foods", "Suggest 4 menus", or "Recipe" -> JUST LIST THEM NATURALLY. Do NOT force a "Monday/Tuesday" schedule if not asked.
+- If user asks for a "Weekly Plan" or "X Days Plan" -> USE THE STRUCTURED FORMAT (Day 1, Day 2...).
+- If user asks for "List of foods", "Suggest N menus", "Give me N meal ideas", or "Recipe" -> USE A SIMPLE NUMBERED LIST:
+  1. [Meal Name] - [Brief description] (Calories: X kcal, Protein: Xg)
+  2. [Meal Name] - [Brief description] (Calories: X kcal, Protein: Xg)
+  ... etc.
+  
+  Do NOT label them as "Breakfast/Lunch/Dinner" if the user didn't ask for a schedule. Just number them.
 
 REMEMBER: DETECT LANGUAGE FIRST, THEN GENERATE CONTENT."""
     
