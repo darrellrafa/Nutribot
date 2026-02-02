@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  backend-flask:
+    build: ./backend-flask
+    container_name: nutribot-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_PORT=5000
+      # Nanti update ini dengan domain Vercel kamu setelah deploy frontend
+      # Contoh: https://nutribot-app.vercel.app
+      - CORS_ORIGINS=*
+    env_file:
+      - ./backend-flask/.env
+    restart: always
