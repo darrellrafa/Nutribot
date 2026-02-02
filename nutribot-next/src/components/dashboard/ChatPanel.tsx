@@ -180,7 +180,7 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
                 className="bg-transparent border-none outline-none focus:ring-0 text-slate-600 font-bold uppercase cursor-pointer"
               >
                 <option value="llama3.2:3b">LLaMA-3.2 (Default)</option>
-                <option value="nutribot-custom">Fine Tune Model (Qwen)</option>
+                <option value="qwen2.5:7b-instruct-q5_K_M">Fine Tune Model (Qwen)</option>
               </select>
             </div>
             <button
