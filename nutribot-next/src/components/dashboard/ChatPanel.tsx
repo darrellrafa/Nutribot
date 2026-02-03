@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, Cpu } from "lucide-react";
+import { Send, Sparkles, Cpu, History, Trash2 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -27,6 +27,17 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("llama3.2:3b");
   const [userContext, setUserContext] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string>(() => {
+    // Generate a new session ID or load from sessionStorage
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('chatSessionId');
+      if (saved) return saved;
+      const newId = `session_${Date.now()}`;
+      sessionStorage.setItem('chatSessionId', newId);
+      return newId;
+    }
+    return `session_${Date.now()}`;
+  });
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -37,6 +48,90 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Helper to get auth token
+  const getAuthToken = () => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('token');
+    }
+    return null;
+  };
+
+  // Load chat history from database
+  const loadChatHistory = async () => {
+    const token = getAuthToken();
+    if (!token) return; // Not logged in, skip DB loading
+
+    try {
+      const baseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}/api/chat/history?session_id=${sessionId}&limit=100`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.messages.length > 0) {
+          const loadedMessages: Message[] = data.messages.map((msg: any) => ({
+            id: msg.id.toString(),
+            text: msg.message,
+            sender: msg.sender,
+            timestamp: new Date(msg.timestamp),
+          }));
+          setMessages(loadedMessages);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  };
+
+  // Save message to database
+  const saveMessageToDB = async (message: string, sender: 'user' | 'ai', modelUsed?: string) => {
+    const token = getAuthToken();
+    if (!token) return; // Not logged in, skip saving
+
+    try {
+      const baseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+      await fetch(`${baseUrl}/api/chat/history`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message,
+          sender,
+          model_used: modelUsed,
+          session_id: sessionId,
+        }),
+      });
+    } catch (error) {
+      console.error('Error saving message:', error);
+    }
+  };
+
+  // Start new session
+  const handleNewSession = () => {
+    const newSessionId = `session_${Date.now()}`;
+    sessionStorage.setItem('chatSessionId', newSessionId);
+    setSessionId(newSessionId);
+
+    // Reset to welcome message
+    const welcomeMsg = userContext?.username
+      ? `Hi ${userContext.username}! I'm your MealMate AI. Ready to plan some healthy meals towards your goal of ${userContext.goal || 'healthy living'}?`
+      : "Hi! I'm your MealMate AI. I can help you plan your week's meals or find healthy recipes. What's on your mind today?";
+
+    setMessages([{
+      id: "1",
+      text: welcomeMsg,
+      sender: "ai",
+      timestamp: new Date(),
+    }]);
+
+    toast.success("Started new chat session");
+  };
 
   useEffect(() => {
     // Load user context from localStorage
@@ -67,6 +162,9 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
       }
     }
 
+    // Load chat history from database
+    loadChatHistory();
+
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -92,6 +190,9 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
+
+    // Save user message to database
+    saveMessageToDB(userText, 'user');
 
     try {
       // Prepare history for context
@@ -135,6 +236,9 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMsg]);
+
+      // Save AI response to database
+      saveMessageToDB(data.reply, 'ai', selectedModel);
 
       // Update Dashboard Panels if data is available
       if (data.nutrition_summary && onUpdateNutrition) {
@@ -184,7 +288,7 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
               </select>
             </div>
             <button
-              onClick={() => setMessages([messages[0]])}
+              onClick={handleNewSession}
               className="text-[10px] bg-white/50 hover:bg-white px-2 py-1 rounded-md border border-white/40 text-emerald-700 font-bold transition-all"
             >
               NEW SESSION

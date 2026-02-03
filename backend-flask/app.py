@@ -14,6 +14,7 @@ load_dotenv()
 # Import routes
 from routes.chat import chat_bp
 from routes.auth import auth_bp
+from routes.history import history_bp
 from models import db
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -44,6 +45,7 @@ CORS(app, resources={
 # Register blueprints
 app.register_blueprint(chat_bp, url_prefix='/api')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(history_bp, url_prefix='/api/chat')
 
 
 # Health check endpoint
