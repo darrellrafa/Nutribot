@@ -15,6 +15,13 @@ interface Message {
   timestamp: Date;
 }
 
+interface ChatSession {
+  session_id: string;
+  started_at: string;
+  last_message_at: string;
+  message_count: number;
+}
+
 import { toast } from "sonner";
 
 interface ChatPanelProps {
@@ -27,6 +34,8 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("llama3.2:3b");
   const [userContext, setUserContext] = useState<any>(null);
+  const [showSessions, setShowSessions] = useState(false);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionId, setSessionId] = useState<string>(() => {
     // Generate a new session ID or load from sessionStorage
     if (typeof window !== 'undefined') {
@@ -117,6 +126,7 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
     const newSessionId = `session_${Date.now()}`;
     sessionStorage.setItem('chatSessionId', newSessionId);
     setSessionId(newSessionId);
+    setShowSessions(false);
 
     // Reset to welcome message
     const welcomeMsg = userContext?.username
@@ -131,6 +141,82 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
     }]);
 
     toast.success("Started new chat session");
+  };
+
+  // Fetch all chat sessions
+  const fetchSessions = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      toast.error("Please login to view chat history");
+      return;
+    }
+
+    try {
+      const baseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}/api/chat/history/sessions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setSessions(data.sessions);
+          setShowSessions(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+      toast.error("Failed to load chat sessions");
+    }
+  };
+
+  // Switch to a specific session
+  const switchToSession = async (targetSessionId: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const baseUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}/api/chat/history?session_id=${targetSessionId}&limit=100`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.messages.length > 0) {
+          const loadedMessages: Message[] = data.messages.map((msg: any) => ({
+            id: msg.id.toString(),
+            text: msg.message,
+            sender: msg.sender,
+            timestamp: new Date(msg.timestamp),
+          }));
+          setMessages(loadedMessages);
+          setSessionId(targetSessionId);
+          sessionStorage.setItem('chatSessionId', targetSessionId);
+          setShowSessions(false);
+          toast.success("Loaded previous chat session");
+        }
+      }
+    } catch (error) {
+      console.error('Error switching session:', error);
+      toast.error("Failed to load session");
+    }
+  };
+
+  // Format date for display
+  const formatSessionDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   useEffect(() => {
@@ -286,6 +372,53 @@ export function ChatPanel({ onUpdateNutrition, onUpdateSummary, onUpdateCalendar
                 <option value="llama3.2:3b">LLaMA-3.2 (Default)</option>
                 <option value="qwen2.5:7b-instruct-q5_K_M">Fine Tune Model (Qwen)</option>
               </select>
+            </div>
+            <div className="relative">
+              <button
+                onClick={fetchSessions}
+                className="text-[10px] bg-white/50 hover:bg-white px-2 py-1 rounded-md border border-white/40 text-slate-600 font-bold transition-all flex items-center gap-1"
+              >
+                <History size={12} />
+                HISTORY
+              </button>
+              {showSessions && (
+                <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-emerald-100 z-50 max-h-80 overflow-y-auto">
+                  <div className="p-3 border-b border-emerald-50 flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-slate-700">Chat History</h4>
+                    <button
+                      onClick={() => setShowSessions(false)}
+                      className="text-slate-400 hover:text-slate-600 text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {sessions.length > 0 ? (
+                    <div className="divide-y divide-emerald-50">
+                      {sessions.map((session) => (
+                        <button
+                          key={session.session_id}
+                          onClick={() => switchToSession(session.session_id)}
+                          className={cn(
+                            "w-full text-left p-3 hover:bg-emerald-50 transition-colors",
+                            session.session_id === sessionId && "bg-emerald-50"
+                          )}
+                        >
+                          <div className="text-xs font-medium text-slate-700">
+                            {formatSessionDate(session.started_at)}
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-1">
+                            {session.message_count} messages
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-sm text-slate-400">
+                      No chat history found
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <button
               onClick={handleNewSession}
